@@ -1,0 +1,60 @@
+{
+  "name": "node-autochglog",
+  "version": "1.1.9",
+  "description": "Git changelog generator, to be used as a CLI utility in pre-commit hooks.",
+  "main": "src/index.js",
+  "bin": "dist/index.js",
+  "homepage": "https://github.com/tommaso-meledina/node-autochglog",
+  "scripts": {
+    "build": "babel src --extensions '.ts,.tsx' --out-dir dist --copy-files",
+    "type-check": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "lint": "npx eslint .",
+    "prepare": "husky install"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix"
+    ],
+    "*.{js,jsx,ts,tsx,json,css,scss,md}": [
+      "prettier --write"
+    ]
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "babel-runtime": "^6.26.0",
+    "mustache": "^4.2.0",
+    "source-map-support": "^0.5.21",
+    "typescript": "^5.7.2"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.26.4",
+    "@babel/core": "^7.26.0",
+    "@babel/plugin-transform-runtime": "^7.25.9",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-typescript": "^7.26.0",
+    "@babel/runtime-corejs3": "^7.26.0",
+    "@eslint/js": "^9.16.0",
+    "@types/mustache": "^4.2.5",
+    "@types/node": "^22.10.1",
+    "eslint": "^9.16.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "globals": "^15.13.0",
+    "husky": "^8.0.0",
+    "lint-staged": "^15.2.10",
+    "prettier": "3.4.2",
+    "typescript-eslint": "^8.17.0"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE.md"
+  ]
+}
