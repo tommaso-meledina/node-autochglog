@@ -1,6 +1,6 @@
 {
   "name": "node-autochglog",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "Git changelog generator, to be used as a CLI utility in pre-commit hooks.",
   "main": "src/index.js",
   "bin": "dist/index.js",
