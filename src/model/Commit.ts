@@ -3,4 +3,5 @@ export interface Commit {
   date: Date;
   message: string;
   category: string;
+  scope?: string;
 }

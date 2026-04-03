@@ -26,6 +26,8 @@ describe('getRuntimeConfig', () => {
     expect(config.stripPRNumbers).toBe(false);
     expect(config.allowedCategories).toHaveLength(4);
     expect(config.outputFilepath).toContain('CHANGELOG.md');
+    expect(config.ignoreScope).toBe(false);
+    expect(config.unscopedLabel).toBe('not scoped');
   });
 
   it('merges custom config over defaults', () => {
@@ -75,5 +77,56 @@ describe('getRuntimeConfig', () => {
 
     expect(path.isAbsolute(config.templateLocation)).toBe(true);
     expect(config.templateLocation).toContain('custom-template.mustache');
+  });
+
+  it('sanitises scope syntax from allowedCategories keys', () => {
+    const customConfig = {
+      allowedCategories: [
+        { key: 'feat(ui)', label: 'Features' },
+        { key: 'fix(auth)', label: 'Fixes' }
+      ]
+    };
+
+    vi.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(customConfig));
+
+    const config = getRuntimeConfig();
+
+    expect(config.allowedCategories).toEqual([
+      { key: 'feat', label: 'Features' },
+      { key: 'fix', label: 'Fixes' }
+    ]);
+  });
+
+  it('deduplicates allowedCategories after sanitisation', () => {
+    const customConfig = {
+      allowedCategories: [
+        { key: 'feat', label: 'Features' },
+        { key: 'feat(ui)', label: 'UI Features' }
+      ]
+    };
+
+    vi.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(customConfig));
+
+    const config = getRuntimeConfig();
+
+    expect(config.allowedCategories).toHaveLength(1);
+    expect(config.allowedCategories[0]).toEqual({
+      key: 'feat',
+      label: 'Features'
+    });
+  });
+
+  it('merges custom ignoreScope and unscopedLabel', () => {
+    const customConfig = {
+      ignoreScope: true,
+      unscopedLabel: 'misc'
+    };
+
+    vi.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(customConfig));
+
+    const config = getRuntimeConfig();
+
+    expect(config.ignoreScope).toBe(true);
+    expect(config.unscopedLabel).toBe('misc');
   });
 });

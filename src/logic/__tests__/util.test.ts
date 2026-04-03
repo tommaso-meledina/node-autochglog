@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   organizeCommitsByCategory,
+  organizeCommitsByScope,
   organizeCommitsByTags,
-  organizeCommitsByTagsAndCategories,
+  organizeCommitsByTagsScopesAndCategories,
   buildChangelogMetadata
 } from '../util';
 import { Commit } from '../../model/Commit';
@@ -32,6 +33,8 @@ const makeConfig = (
     { key: 'refactor', label: 'Refactoring' }
   ],
   stripPRNumbers: false,
+  ignoreScope: false,
+  unscopedLabel: 'not scoped',
   ...overrides
 });
 
@@ -62,6 +65,49 @@ describe('organizeCommitsByCategory', () => {
     expect(Object.keys(result).sort()).toEqual(['feat', 'fix']);
     expect(result['feat']).toEqual([c1, c3]);
     expect(result['fix']).toEqual([c2]);
+  });
+});
+
+describe('organizeCommitsByScope', () => {
+  it('returns an empty record for an empty array', () => {
+    expect(organizeCommitsByScope([])).toEqual({});
+  });
+
+  it('groups unscoped commits under empty string key', () => {
+    const commit = makeCommit({ category: 'feat', message: 'add button' });
+    const result = organizeCommitsByScope([commit]);
+    expect(Object.keys(result)).toEqual(['']);
+    expect(result['']).toEqual([commit]);
+  });
+
+  it('groups scoped commits under their scope', () => {
+    const commit = makeCommit({
+      category: 'feat',
+      message: 'add endpoint',
+      scope: 'api'
+    });
+    const result = organizeCommitsByScope([commit]);
+    expect(Object.keys(result)).toEqual(['api']);
+    expect(result['api']).toEqual([commit]);
+  });
+
+  it('separates commits with different scopes', () => {
+    const c1 = makeCommit({
+      category: 'feat',
+      message: 'add endpoint',
+      scope: 'api'
+    });
+    const c2 = makeCommit({
+      category: 'fix',
+      message: 'fix button',
+      scope: 'ui'
+    });
+    const c3 = makeCommit({ category: 'feat', message: 'add readme' });
+    const result = organizeCommitsByScope([c1, c2, c3]);
+    expect(Object.keys(result).sort()).toEqual(['', 'api', 'ui']);
+    expect(result['api']).toEqual([c1]);
+    expect(result['ui']).toEqual([c2]);
+    expect(result['']).toEqual([c3]);
   });
 });
 
@@ -149,8 +195,8 @@ describe('organizeCommitsByTags', () => {
   });
 });
 
-describe('organizeCommitsByTagsAndCategories', () => {
-  it('nests categories within tags', () => {
+describe('organizeCommitsByTagsScopesAndCategories', () => {
+  it('nests scopes and categories within tags', () => {
     const commits = [
       makeCommit({
         category: 'feat',
@@ -166,10 +212,11 @@ describe('organizeCommitsByTagsAndCategories', () => {
     const tags: Tag[] = [{ name: '1.0.0', date: new Date('2025-01-10') }];
     const gitLogInfo: GitLogInfo = { commits, tags };
     const config = makeConfig();
-    const result = organizeCommitsByTagsAndCategories(gitLogInfo, config);
+    const result = organizeCommitsByTagsScopesAndCategories(gitLogInfo, config);
     expect(result['1.0.0']).toBeDefined();
-    expect(result['1.0.0']['feat']).toHaveLength(1);
-    expect(result['1.0.0']['fix']).toHaveLength(1);
+    expect(result['1.0.0']['']).toBeDefined();
+    expect(result['1.0.0']['']['feat']).toHaveLength(1);
+    expect(result['1.0.0']['']['fix']).toHaveLength(1);
   });
 });
 
@@ -180,12 +227,12 @@ describe('buildChangelogMetadata', () => {
   ];
 
   it('creates releases sorted by date descending', () => {
-    const data: Record<string, Record<string, Commit[]>> = {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
       '1.0.0': {
-        feat: [makeCommit({ category: 'feat', message: 'a' })]
+        '': { feat: [makeCommit({ category: 'feat', message: 'a' })] }
       },
       '2.0.0': {
-        fix: [makeCommit({ category: 'fix', message: 'b' })]
+        '': { fix: [makeCommit({ category: 'fix', message: 'b' })] }
       }
     };
     const config = makeConfig();
@@ -195,10 +242,12 @@ describe('buildChangelogMetadata', () => {
   });
 
   it('filters out categories not in allowedCategories', () => {
-    const data: Record<string, Record<string, Commit[]>> = {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
       '1.0.0': {
-        feat: [makeCommit({ category: 'feat', message: 'a' })],
-        chore: [makeCommit({ category: 'chore', message: 'cleanup' })]
+        '': {
+          feat: [makeCommit({ category: 'feat', message: 'a' })],
+          chore: [makeCommit({ category: 'chore', message: 'cleanup' })]
+        }
       }
     };
     const config = makeConfig();
@@ -209,9 +258,9 @@ describe('buildChangelogMetadata', () => {
   });
 
   it('uses label from allowedCategories when available', () => {
-    const data: Record<string, Record<string, Commit[]>> = {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
       '1.0.0': {
-        feat: [makeCommit({ category: 'feat', message: 'a' })]
+        '': { feat: [makeCommit({ category: 'feat', message: 'a' })] }
       }
     };
     const config = makeConfig();
@@ -221,9 +270,11 @@ describe('buildChangelogMetadata', () => {
   });
 
   it('falls back to key when label is absent', () => {
-    const data: Record<string, Record<string, Commit[]>> = {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
       '1.0.0': {
-        docs: [makeCommit({ category: 'docs', message: 'update readme' })]
+        '': {
+          docs: [makeCommit({ category: 'docs', message: 'update readme' })]
+        }
       }
     };
     const config = makeConfig({
@@ -235,12 +286,12 @@ describe('buildChangelogMetadata', () => {
   });
 
   it('marks initialTag releases with actualTag=false', () => {
-    const data: Record<string, Record<string, Commit[]>> = {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
       Unreleased: {
-        feat: [makeCommit({ category: 'feat', message: 'a' })]
+        '': { feat: [makeCommit({ category: 'feat', message: 'a' })] }
       },
       '1.0.0': {
-        feat: [makeCommit({ category: 'feat', message: 'b' })]
+        '': { feat: [makeCommit({ category: 'feat', message: 'b' })] }
       }
     };
     const config = makeConfig();
@@ -249,5 +300,18 @@ describe('buildChangelogMetadata', () => {
     const tagged = result.releases.find((r) => r.name === '1.0.0')!;
     expect(unreleased.actualTag).toBe(false);
     expect(tagged.actualTag).toBe(true);
+  });
+
+  it('sets scopesEnabled=false when no commits have a scope', () => {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
+      '1.0.0': {
+        '': { feat: [makeCommit({ category: 'feat', message: 'a' })] }
+      }
+    };
+    const config = makeConfig();
+    const result = buildChangelogMetadata(data, tags, config);
+    expect(result.scopesEnabled).toBe(false);
+    expect(result.releases[0].scopes).toEqual([]);
+    expect(result.releases[0].categories).toHaveLength(1);
   });
 });

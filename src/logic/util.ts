@@ -1,5 +1,6 @@
 import { NodeAutoChglogConfig } from '../config/NodeAutochglogConfig';
 import { Changelog } from '../model/Changelog';
+import { Category } from '../model/Category';
 import { Commit } from '../model/Commit';
 import { GitLogInfo } from '../model/GitLogInfo';
 import { Tag } from '../model/Tag';
@@ -10,6 +11,19 @@ export const organizeCommitsByCategory = (
   return commits.reduce(
     (acc, commit) => {
       (acc[commit.category] ||= []).push(commit);
+      return acc;
+    },
+    {} as Record<string, Commit[]>
+  );
+};
+
+export const organizeCommitsByScope = (
+  commits: Commit[]
+): Record<string, Commit[]> => {
+  return commits.reduce(
+    (acc, commit) => {
+      const scope = commit.scope ?? '';
+      (acc[scope] ||= []).push(commit);
       return acc;
     },
     {} as Record<string, Commit[]>
@@ -27,7 +41,6 @@ export const organizeCommitsByTags = (
 
   let buffer: Commit[] = [];
   for (const commit of gitLogInfo.commits) {
-    //console.debug(`Processing commit: ${commit.message} (${commit.date})`);
     buffer.push(commit);
     const relevantTag = gitLogInfo.tags
       .filter((tag) => {
@@ -52,47 +65,89 @@ export const organizeCommitsByTags = (
   return commitByTagsMap;
 };
 
-export const organizeCommitsByTagsAndCategories = (
+export const organizeCommitsByTagsScopesAndCategories = (
   gitLogInfo: GitLogInfo,
   config: NodeAutoChglogConfig
-): Record<string, Record<string, Commit[]>> => {
-  const commitsByTagsAndCategories: Record<
-    string,
-    Record<string, Commit[]>
-  > = {};
+): Record<string, Record<string, Record<string, Commit[]>>> => {
+  const result: Record<string, Record<string, Record<string, Commit[]>>> = {};
   const commitsByTags = organizeCommitsByTags(gitLogInfo, config);
   for (const tag in commitsByTags) {
-    commitsByTagsAndCategories[tag] = organizeCommitsByCategory(
-      commitsByTags[tag]
-    );
+    const commits = config.ignoreScope
+      ? commitsByTags[tag].map((c) => ({ ...c, scope: undefined }))
+      : commitsByTags[tag];
+    const byScope = organizeCommitsByScope(commits);
+    result[tag] = {};
+    for (const scope in byScope) {
+      result[tag][scope] = organizeCommitsByCategory(byScope[scope]);
+    }
   }
+  return result;
+};
 
-  return commitsByTagsAndCategories;
+const buildCategories = (
+  categoriesMap: Record<string, Commit[]>,
+  config: NodeAutoChglogConfig
+): Category[] => {
+  return Object.entries(categoriesMap)
+    .map(([categoryKey, commits]) => ({
+      key: categoryKey,
+      name:
+        config.allowedCategories.find(
+          (category) => category.key === categoryKey
+        )?.label || categoryKey,
+      commits: commits
+    }))
+    .filter((category) =>
+      config.allowedCategories
+        .map((allowed) => allowed.key)
+        .includes(category.key)
+    );
 };
 
 export const buildChangelogMetadata = (
-  commitsByTagsAndCategories: Record<string, Record<string, Commit[]>>,
+  commitsByTagsScopesAndCategories: Record<
+    string,
+    Record<string, Record<string, Commit[]>>
+  >,
   tags: Tag[],
   config: NodeAutoChglogConfig
 ): Changelog => {
+  const anyScopeExists = Object.values(commitsByTagsScopesAndCategories).some(
+    (scopeMap) => Object.keys(scopeMap).some((scope) => scope !== '')
+  );
+
   return {
-    releases: Object.entries(commitsByTagsAndCategories)
-      .map(([releaseName, categoriesMap]) => ({
+    scopesEnabled: anyScopeExists,
+    releases: Object.entries(commitsByTagsScopesAndCategories)
+      .map(([releaseName, scopesMap]) => ({
         name: releaseName,
-        categories: Object.entries(categoriesMap)
-          .map(([categoryKey, commits]) => ({
-            key: categoryKey,
-            name:
-              config.allowedCategories.find(
-                (category) => category.key === categoryKey
-              )?.label || categoryKey,
-            commits: commits
-          }))
-          .filter((category) =>
-            config.allowedCategories
-              .map((allowed) => allowed.key)
-              .includes(category.key)
-          ),
+        scopes: anyScopeExists
+          ? Object.entries(scopesMap)
+              .map(([scopeKey, categoriesMap]) => ({
+                name: scopeKey || config.unscopedLabel,
+                categories: buildCategories(categoriesMap, config)
+              }))
+              .filter((scope) => scope.categories.length > 0)
+              .sort((a, b) => {
+                if (a.name === config.unscopedLabel) return 1;
+                if (b.name === config.unscopedLabel) return -1;
+                return a.name.localeCompare(b.name);
+              })
+          : [],
+        categories: !anyScopeExists
+          ? buildCategories(
+              Object.values(scopesMap).reduce(
+                (merged, catMap) => {
+                  for (const [catKey, commits] of Object.entries(catMap)) {
+                    (merged[catKey] ||= []).push(...commits);
+                  }
+                  return merged;
+                },
+                {} as Record<string, Commit[]>
+              ),
+              config
+            )
+          : [],
         date:
           tags.filter((tag) => tag.name === releaseName)[0]?.date || new Date(),
         actualTag: releaseName != config.initialTag

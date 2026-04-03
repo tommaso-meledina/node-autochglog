@@ -17,6 +17,19 @@ const getCustomConfig: () => CustomNodeAutoChglogConfig | null = () => {
   }
 };
 
+const sanitiseAllowedCategories = (
+  categories: { key: string; label?: string }[]
+): { key: string; label?: string }[] => {
+  const seen = new Set<string>();
+  return categories
+    .map((cat) => ({ ...cat, key: cat.key.replace(/\([^)]*\)$/, '') }))
+    .filter((cat) => {
+      if (seen.has(cat.key)) return false;
+      seen.add(cat.key);
+      return true;
+    });
+};
+
 const processConfig: (
   inputConfig: NodeAutoChglogConfig
 ) => NodeAutoChglogConfig = (inputConfig: NodeAutoChglogConfig) => {
@@ -25,7 +38,8 @@ const processConfig: (
     outputFilepath: join(process.cwd(), inputConfig.outputFilepath),
     templateLocation: inputConfig.templateLocation
       ? join(process.cwd(), inputConfig.templateLocation)
-      : join(__dirname, 'DEFAULT_TEMPLATE.mustache')
+      : join(__dirname, 'DEFAULT_TEMPLATE.mustache'),
+    allowedCategories: sanitiseAllowedCategories(inputConfig.allowedCategories)
   };
 };
 

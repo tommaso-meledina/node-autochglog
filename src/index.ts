@@ -5,7 +5,7 @@ import 'source-map-support/register';
 import { getGitLogInfo } from './logic/git-parser';
 import {
   buildChangelogMetadata,
-  organizeCommitsByTagsAndCategories
+  organizeCommitsByTagsScopesAndCategories
 } from './logic/util';
 import { FALLBACK_ERROR_MESSAGE } from './messages';
 
@@ -23,7 +23,7 @@ const main = async () => {
       Mustache.render(
         fs.readFileSync(config.templateLocation, 'utf-8'),
         buildChangelogMetadata(
-          organizeCommitsByTagsAndCategories(gitLogInfo, config),
+          organizeCommitsByTagsScopesAndCategories(gitLogInfo, config),
           gitLogInfo.tags,
           config
         )

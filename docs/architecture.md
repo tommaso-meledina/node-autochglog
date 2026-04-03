@@ -5,12 +5,12 @@
 ## Data flow
 
 ```
-git log  ──►  getGitLogInfo()  ──►  organizeCommitsByTagsAndCategories()  ──►  buildChangelogMetadata()  ──►  Mustache.render()  ──►  file
+git log  ──►  getGitLogInfo()  ──►  organizeCommitsByTagsScopesAndCategories()  ──►  buildChangelogMetadata()  ──►  Mustache.render()  ──►  file
 ```
 
-1. **`getGitLogInfo`** (`logic/git-parser.ts`) invokes `git log` to obtain commit IDs, dates, messages, and tag decorations. It filters commits matching the `type: description` Conventional Commits pattern and extracts semver-like tags via the `extractTagName` helper.
-2. **`organizeCommitsByTagsAndCategories`** (`logic/util.ts`) groups commits under their nearest subsequent tag (release), then sub-groups them by category (the Conventional Commit type prefix). Commits newer than all tags are assigned to the configurable `initialTag`.
-3. **`buildChangelogMetadata`** (`logic/util.ts`) transforms the nested map into a `Changelog` object for Mustache rendering, filtering out categories absent from `allowedCategories`, resolving display labels, and sorting releases by date descending.
+1. **`getGitLogInfo`** (`logic/git-parser.ts`) invokes `git log` to obtain commit IDs, dates, messages, and tag decorations. It filters commits matching the `type(scope): description` Conventional Commits pattern (scope is optional) and extracts semver-like tags via the `extractTagName` helper.
+2. **`organizeCommitsByTagsScopesAndCategories`** (`logic/util.ts`) groups commits under their nearest subsequent tag (release), then sub-groups by scope, then by category (the Conventional Commit type prefix). When `ignoreScope` is `true`, all scope information is cleared before grouping. Commits newer than all tags are assigned to the configurable `initialTag`.
+3. **`buildChangelogMetadata`** (`logic/util.ts`) transforms the nested map into a `Changelog` object for Mustache rendering, filtering out categories absent from `allowedCategories`, resolving display labels, and sorting releases by date descending. When at least one commit across the entire changelog has a scope, `scopesEnabled` is set to `true` and scope headings are included; otherwise scope headings are omitted. Scopes are sorted alphabetically ascending, with unscoped commits placed last under the configurable `unscopedLabel`.
 4. **Mustache** renders the `Changelog` object against a template (bundled default or user-supplied) and the result is written to disk.
 
 ## Project layout
@@ -29,7 +29,8 @@ src/
 └── model/
     ├── Changelog.ts                Top-level changelog structure
     ├── Release.ts                  A tagged release
-    ├── Category.ts                 A group of commits under a release
+    ├── Scope.ts                    A scope group within a release
+    ├── Category.ts                 A group of commits under a scope or release
     ├── Commit.ts                   A single parsed commit
     ├── GitLogInfo.ts               Raw parsed output from git log
     └── Tag.ts                      A git tag with its date
@@ -41,7 +42,7 @@ src/
 |-------|---------------|--------------|
 | **config** | Load user config JSON, merge with defaults, resolve file paths | Reads filesystem |
 | **logic/git-parser** | Invoke `git log`, parse raw output into `GitLogInfo` | Spawns child processes |
-| **logic/util** | Organise commits by tags and categories; build `Changelog` metadata | None (pure) |
+| **logic/util** | Organise commits by tags, scopes, and categories; build `Changelog` metadata | None (pure) |
 | **model** | TypeScript interfaces for the data model | None |
 | **index** | Orchestrate the pipeline, render template, write output | Reads/writes filesystem |
 
@@ -52,24 +53,29 @@ src/
 1. Read `node-autochglog.config.json` from `process.cwd()` (optional; missing file is silently ignored).
 2. Shallow-merge custom values over `defaultConfig`.
 3. Post-process paths: `outputFilepath` is resolved relative to `process.cwd()`; `templateLocation` is resolved relative to `process.cwd()` when non-empty, or falls back to the bundled `DEFAULT_TEMPLATE.mustache`.
+4. Sanitise `allowedCategories`: any `(scope)` suffix on keys is stripped and duplicates are removed. This prevents breakage when keys contain legacy scope syntax.
 
 Default config values are stored as raw (relative) strings; path resolution is deferred to `processConfig` at runtime.
 
 ## Model
 
-- **`Changelog`** — `{ releases: Release[] }`
-- **`Release`** — `{ name, categories, date, actualTag }`
+- **`Changelog`** — `{ scopesEnabled, releases }`
+- **`Release`** — `{ name, scopes, categories, date, actualTag }`. When `scopesEnabled` is `true`, `scopes` is populated and `categories` is empty; when `false`, `categories` is populated and `scopes` is empty.
+- **`Scope`** — `{ name, categories }`
 - **`Category`** — `{ key, name, commits }`
-- **`Commit`** — `{ id, date, message, category }`
+- **`Commit`** — `{ id, date, message, category, scope? }`
 - **`GitLogInfo`** — `{ commits, tags }`
 - **`Tag`** — `{ name, date }`
 
+The output heading hierarchy is: **version > scope > type**. When scope headings are active, types render one heading level deeper than without scopes.
+
 ## Commit parsing
 
-Commit messages are matched against `/^([^:]+):\s*(.*)/`:
+Commit messages are matched against `/^([^(:]+)(?:\(([^)]*)\))?:\s*(.*)/`:
 
-- **Group 1** (everything before the first colon) becomes the `category`.
-- **Group 2** (everything after the colon and optional whitespace) becomes the `message`.
+- **Group 1** (type prefix before parentheses or colon) becomes the `category`.
+- **Group 2** (text inside parentheses, optional) becomes the `scope`.
+- **Group 3** (everything after the colon and optional whitespace) becomes the `message`.
 
 Non-matching messages are silently excluded from the changelog.
 
@@ -93,9 +99,10 @@ The Husky pre-commit hook runs `npm run lint`.
 
 Tests live alongside their source in `__tests__/` directories. The test suite covers:
 
-- **`util.ts`** — pure function tests for `organizeCommitsByCategory`, `organizeCommitsByTags`, `organizeCommitsByTagsAndCategories`, and `buildChangelogMetadata`.
-- **`git-parser.ts`** — tests with `exec` mocked via `vi.mock('node:util')`, verifying commit parsing, tag extraction, PR-number stripping, and error handling.
-- **`configService.ts`** — tests with `fs` mocked, verifying default config, custom config merging, and path resolution.
+- **`util.ts`** — pure function tests for `organizeCommitsByCategory`, `organizeCommitsByScope`, `organizeCommitsByTags`, `organizeCommitsByTagsScopesAndCategories`, and `buildChangelogMetadata`.
+- **`scope.ts`** — dedicated tests for scope grouping, `ignoreScope` flag, `unscopedLabel`, scope sorting, and scoped changelog metadata building.
+- **`git-parser.ts`** — tests with `exec` mocked via `vi.mock('node:util')`, verifying commit parsing (including scope extraction), tag extraction, PR-number stripping, and error handling.
+- **`configService.ts`** — tests with `fs` mocked, verifying default config, custom config merging, path resolution, and `allowedCategories` sanitisation.
 
 ## Known limitations
 
@@ -105,5 +112,5 @@ Tests live alongside their source in `__tests__/` directories. The test suite co
 ## Conventions
 
 - **UK English** for identifiers and documentation.
-- **Conventional Commits** (without scope) for commit messages.
+- **Conventional Commits** (with optional scope) for commit messages.
 - **ESLint + Prettier** enforced via pre-commit hook.

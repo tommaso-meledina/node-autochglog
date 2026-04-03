@@ -6,6 +6,8 @@ export interface NodeAutoChglogConfig {
   outputFilepath: string;
   allowedCategories: { key: string; label?: string }[];
   stripPRNumbers: boolean;
+  ignoreScope: boolean;
+  unscopedLabel: string;
 }
 
 export interface CustomNodeAutoChglogConfig {
@@ -16,6 +18,8 @@ export interface CustomNodeAutoChglogConfig {
   outputFilepath?: string;
   allowedCategories?: { key: string; label?: string }[];
   stripPRNumbers?: boolean;
+  ignoreScope?: boolean;
+  unscopedLabel?: string;
 }
 
 export const defaultConfig: NodeAutoChglogConfig = {
@@ -43,5 +47,7 @@ export const defaultConfig: NodeAutoChglogConfig = {
       label: 'Fixes'
     }
   ],
-  stripPRNumbers: false
+  stripPRNumbers: false,
+  ignoreScope: false,
+  unscopedLabel: 'not scoped'
 };

@@ -26,7 +26,9 @@ const makeConfig = (): NodeAutoChglogConfig => ({
     { key: 'feat', label: 'Features' },
     { key: 'fix', label: 'Fixes' }
   ],
-  stripPRNumbers: false
+  stripPRNumbers: false,
+  ignoreScope: false,
+  unscopedLabel: 'not scoped'
 });
 
 const setupExecMock = (messages: string) => {
@@ -59,6 +61,7 @@ describe('commit message parsing with colons in description', () => {
     expect(result.commits).toHaveLength(1);
     expect(result.commits[0].category).toBe('feat');
     expect(result.commits[0].message).toBe('add support for http: protocol');
+    expect(result.commits[0].scope).toBeUndefined();
   });
 
   it('correctly parses scoped conventional commits', async () => {
@@ -66,7 +69,8 @@ describe('commit message parsing with colons in description', () => {
     const result = await getGitLogInfo(makeConfig());
 
     expect(result.commits).toHaveLength(1);
-    expect(result.commits[0].category).toBe('fix(auth)');
+    expect(result.commits[0].category).toBe('fix');
+    expect(result.commits[0].scope).toBe('auth');
     expect(result.commits[0].message).toBe('handle edge case');
   });
 });

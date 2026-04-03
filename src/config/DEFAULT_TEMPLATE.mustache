@@ -3,7 +3,21 @@
 {{#releases}}
 
 ## {{name}}
+{{#scopesEnabled}}
+{{#scopes}}
 
+### {{name}}
+{{#categories}}
+
+#### {{name}}
+
+{{#commits}}
+* {{message}}
+{{/commits}}
+{{/categories}}
+{{/scopes}}
+{{/scopesEnabled}}
+{{^scopesEnabled}}
 {{#categories}}
 
 ### {{name}}
@@ -13,5 +27,6 @@
 {{/commits}}
 
 {{/categories}}
+{{/scopesEnabled}}
 
 {{/releases}}

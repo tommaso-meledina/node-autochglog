@@ -29,6 +29,8 @@ const makeConfig = (
     { key: 'fix', label: 'Fixes' }
   ],
   stripPRNumbers: false,
+  ignoreScope: false,
+  unscopedLabel: 'not scoped',
   ...overrides
 });
 
@@ -75,6 +77,7 @@ describe('getGitLogInfo', () => {
     expect(result.commits[0].category).toBe('feat');
     expect(result.commits[0].message).toBe('add login page');
     expect(result.commits[0].id).toBe('abc1234');
+    expect(result.commits[0].scope).toBeUndefined();
     expect(result.tags).toHaveLength(1);
     expect(result.tags[0].name).toBe('1.0.0');
   });
@@ -165,5 +168,23 @@ describe('getGitLogInfo', () => {
 
     expect(result.commits).toHaveLength(0);
     expect(result.tags).toHaveLength(0);
+  });
+
+  it('parses scoped conventional commits with separate category and scope', async () => {
+    setupExecMock({
+      ids: 'abc1234',
+      dates: '2025-01-15 10:00:00 +0000',
+      messages: 'fix(auth): handle edge case',
+      tagDates: '',
+      tagDecorations: ''
+    });
+
+    const config = makeConfig();
+    const result = await getGitLogInfo(config);
+
+    expect(result.commits).toHaveLength(1);
+    expect(result.commits[0].category).toBe('fix');
+    expect(result.commits[0].scope).toBe('auth');
+    expect(result.commits[0].message).toBe('handle edge case');
   });
 });
