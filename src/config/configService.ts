@@ -1,7 +1,8 @@
 import { join } from 'path';
 import {
   CustomNodeAutoChglogConfig,
-  NodeAutoChglogConfig
+  NodeAutoChglogConfig,
+  defaultConfig
 } from './NodeAutochglogConfig';
 import { readFileSync } from 'fs';
 
@@ -34,32 +35,4 @@ export const getRuntimeConfig: () => NodeAutoChglogConfig = () => {
     ...defaultConfig,
     ...customConfig
   });
-};
-
-const defaultConfig: NodeAutoChglogConfig = {
-  tagFilter:
-    '^\\d+\\.\\d+\\.\\d+(?:-[\\da-zA-Z\\-\\.]+)?(?:\\+[\\da-zA-Z\\-\\.]+)?$',
-  initialTag: 'Unreleased',
-  templateLocation: '',
-  targetBranch: 'develop',
-  outputFilepath: join('CHANGELOG.md'),
-  allowedCategories: [
-    {
-      key: 'feat',
-      label: 'Features'
-    },
-    {
-      key: 'refactor',
-      label: 'Refactoring'
-    },
-    {
-      key: 'ci',
-      label: 'Integration'
-    },
-    {
-      key: 'fix',
-      label: 'Fixes'
-    }
-  ],
-  stripPRNumbers: false
 };

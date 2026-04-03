@@ -1,5 +1,3 @@
-import { join } from 'path';
-
 export interface NodeAutoChglogConfig {
   tagFilter: string;
   initialTag: string;
@@ -24,9 +22,9 @@ export const defaultConfig: NodeAutoChglogConfig = {
   tagFilter:
     '^\\d+\\.\\d+\\.\\d+(?:-[\\da-zA-Z\\-\\.]+)?(?:\\+[\\da-zA-Z\\-\\.]+)?$',
   initialTag: 'Unreleased',
-  templateLocation: join(__dirname, 'DEFAULT_TEMPLATE.mustache'),
+  templateLocation: '',
   targetBranch: 'develop',
-  outputFilepath: join(process.cwd(), 'CHANGELOG.md'),
+  outputFilepath: 'CHANGELOG.md',
   allowedCategories: [
     {
       key: 'feat',

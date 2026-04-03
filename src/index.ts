@@ -31,13 +31,9 @@ const main = async () => {
     );
     console.info(`DONE! Output written to ${config.outputFilepath}`);
   } catch (error) {
-    try {
-      const parsedError = error as { message: string };
-      console.warn(parsedError.message || FALLBACK_ERROR_MESSAGE);
-    } catch (parsingError) {
-      console.warn(`Could not parse error: ${parsingError}`);
-      console.error(JSON.stringify(error) || FALLBACK_ERROR_MESSAGE);
-    }
+    const message =
+      error instanceof Error ? error.message : FALLBACK_ERROR_MESSAGE;
+    console.error(message);
     throw error;
   }
 };
