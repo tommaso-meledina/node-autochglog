@@ -6,7 +6,7 @@
   "bin": "dist/index.js",
   "homepage": "https://github.com/tommaso-meledina/node-autochglog",
   "scripts": {
-    "build": "babel src --extensions '.ts,.tsx' --out-dir dist --copy-files",
+    "build": "babel src --extensions '.ts,.tsx' --out-dir dist --copy-files --ignore '**/__tests__/**'",
     "type-check": "tsc --noEmit",
     "start": "node dist/index.js",
     "test": "vitest run",
