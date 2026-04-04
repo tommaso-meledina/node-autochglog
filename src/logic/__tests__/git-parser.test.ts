@@ -28,6 +28,7 @@ const makeConfig = (
     { key: 'feat', label: 'Features' },
     { key: 'fix', label: 'Fixes' }
   ],
+  allowedScopes: [],
   stripPRNumbers: false,
   ignoreScope: false,
   unscopedLabel: 'not scoped',

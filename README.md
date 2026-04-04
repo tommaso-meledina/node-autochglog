@@ -7,12 +7,12 @@
 Here are some concepts to better understand the logic behind the tool:
 
 - to the purpose of this tool, a `Changelog` is a list of `Release` items;
-- each `Release` item contains a list of `Category` items;
-- each `Category` item contains a list of `Commit items`.
+- each `Release` item may contain _scopes_, each of which contains a list of `Category` items; when no commit in the entire changelog has a scope, scope headings are omitted and categories sit directly under the release;
+- each `Category` item contains a list of `Commit` items.
 
-In other words, a _changelog_ is a list of _releases_, each _release_ contains a number of _commits_, that are arranged in _categories_ within the _release_ they belong to.
+In other words, a _changelog_ is a list of _releases_, each _release_ contains a number of _commits_, that are arranged in _categories_ (and optionally grouped by _scope_) within the _release_ they belong to.
 
-_Releases_ are defined by git tags, _categories_ are defined by Conventional Commit prefixes of _commit_ messages.
+_Releases_ are defined by git tags, _categories_ are defined by Conventional Commit type prefixes, and _scopes_ are defined by the optional Conventional Commit scope (e.g. `feat(api): ...`).
 
 ## Installation
 
@@ -50,7 +50,10 @@ export interface NodeAutoChglogConfig {
   targetBranch: string;
   outputFilepath: string;
   allowedCategories: { key: string; label?: string }[];
+  allowedScopes: { key: string; label?: string }[];
   stripPRNumbers: boolean;
+  ignoreScope: boolean;
+  unscopedLabel: string;
 }
 ```
 
@@ -86,32 +89,65 @@ export interface NodeAutoChglogConfig {
     <td>Project root</td>
   </tr>
   <tr>
+    <td><code>allowedCategories</code></td>
+    <td>List of key/label objects defining which commit prefixes (<code>key</code>) shall be considered as valid categories and which labels (<code>label</code>) shall be used in order to represent them; the <code>label</code> property is optional, if absent the <code>key</code> property will be used in its place. Categories not listed here are excluded from the changelog.</td>
+    <td>
+      <pre lang="json">
+[
+  { "key": "feat", "label": "Features" },
+  { "key": "refactor", "label": "Refactoring" },
+  { "key": "ci", "label": "Integration" },
+  { "key": "fix", "label": "Fixes" }
+]
+      </pre>
+    </td>
+  </tr>
+  <tr>
+    <td><code>allowedScopes</code></td>
+    <td>List of key/label objects defining which Conventional Commit scopes (<code>key</code>) shall be included in the changelog and which labels (<code>label</code>) shall be used to represent them; the <code>label</code> property is optional, if absent the <code>key</code> property will be used in its place. When populated, scopes not listed here are excluded from the changelog. When empty (the default), all scopes are included.</td>
+    <td><code>[]</code> (all scopes allowed)</td>
+  </tr>
+  <tr>
     <td><code>stripPRNumbers</code></td>
     <td>Whether the tool should strip PR numbers from the end of commit messages</td>
     <td><code>false</code></td>
   </tr>
   <tr>
-    <td><code>allowedCategories</code></td>
-    <td>List of key/label objects defining which commit prefixes (<code>key</code>) shall be considered as valid categories and which labels (<code>label</code>) shall be used in order to represent them; the <code>label</code> property is optional, if absent the <code>key</code> property will be used in its place.</td>
-    <td>
-      <pre lang="json">
-{
-  "key": "feat",
-  "label": "Features"
-},
-{
-  "key": "refactor",
-  "label": "Refactoring"
-},
-{
-  "key": "ci",
-  "label": "Integration"
-},
-{
-  "key": "fix",
-  "label": "Fixes"
-}
-      </pre>
-    </td>
+    <td><code>ignoreScope</code></td>
+    <td>When <code>true</code>, all scope information is cleared before grouping — commits are grouped by category directly under each release, without scope headings</td>
+    <td><code>false</code></td>
+  </tr>
+  <tr>
+    <td><code>unscopedLabel</code></td>
+    <td>Heading used for commits that have no scope, when scope headings are active</td>
+    <td><code>not scoped</code></td>
   </tr>
 </table>
+
+### Complete configuration example
+
+```json
+{
+  "tagFilter": "^\\d+\\.\\d+\\.\\d+$",
+  "initialTag": "Unreleased",
+  "templateLocation": "",
+  "targetBranch": "main",
+  "outputFilepath": "CHANGELOG.md",
+  "allowedCategories": [
+    { "key": "feat", "label": "Features" },
+    { "key": "fix", "label": "Fixes" },
+    { "key": "refactor", "label": "Refactoring" },
+    { "key": "ci", "label": "Integration" },
+    { "key": "docs", "label": "Documentation" }
+  ],
+  "allowedScopes": [
+    { "key": "api", "label": "API" },
+    { "key": "ui", "label": "User Interface" },
+    { "key": "arch", "label": "Architecture" },
+    { "key": "auth", "label": "Authentication" }
+  ],
+  "stripPRNumbers": true,
+  "ignoreScope": false,
+  "unscopedLabel": "General"
+}
+```

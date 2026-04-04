@@ -123,8 +123,17 @@ export const buildChangelogMetadata = (
         name: releaseName,
         scopes: anyScopeExists
           ? Object.entries(scopesMap)
+              .filter(
+                ([scopeKey]) =>
+                  scopeKey === '' ||
+                  config.allowedScopes.length === 0 ||
+                  config.allowedScopes.some((s) => s.key === scopeKey)
+              )
               .map(([scopeKey, categoriesMap]) => ({
-                name: scopeKey || config.unscopedLabel,
+                name: scopeKey
+                  ? (config.allowedScopes.find((s) => s.key === scopeKey)
+                      ?.label ?? scopeKey)
+                  : config.unscopedLabel,
                 categories: buildCategories(categoriesMap, config)
               }))
               .filter((scope) => scope.categories.length > 0)

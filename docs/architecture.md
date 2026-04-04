@@ -10,7 +10,7 @@ git log  ──►  getGitLogInfo()  ──►  organizeCommitsByTagsScopesAndCa
 
 1. **`getGitLogInfo`** (`logic/git-parser.ts`) invokes `git log` to obtain commit IDs, dates, messages, and tag decorations. It filters commits matching the `type(scope): description` Conventional Commits pattern (scope is optional) and extracts semver-like tags via the `extractTagName` helper.
 2. **`organizeCommitsByTagsScopesAndCategories`** (`logic/util.ts`) groups commits under their nearest subsequent tag (release), then sub-groups by scope, then by category (the Conventional Commit type prefix). When `ignoreScope` is `true`, all scope information is cleared before grouping. Commits newer than all tags are assigned to the configurable `initialTag`.
-3. **`buildChangelogMetadata`** (`logic/util.ts`) transforms the nested map into a `Changelog` object for Mustache rendering, filtering out categories absent from `allowedCategories`, resolving display labels, and sorting releases by date descending. When at least one commit across the entire changelog has a scope, `scopesEnabled` is set to `true` and scope headings are included; otherwise scope headings are omitted. Scopes are sorted alphabetically ascending, with unscoped commits placed last under the configurable `unscopedLabel`.
+3. **`buildChangelogMetadata`** (`logic/util.ts`) transforms the nested map into a `Changelog` object for Mustache rendering, filtering out categories absent from `allowedCategories` and scopes absent from `allowedScopes` (when the latter is non-empty), resolving display labels for both categories and scopes, and sorting releases by date descending. When at least one commit across the entire changelog has a scope, `scopesEnabled` is set to `true` and scope headings are included; otherwise scope headings are omitted. Scope display names are resolved via `allowedScopes` labels (falling back to the raw scope key when no label is provided). Scopes are sorted alphabetically ascending by resolved name, with unscoped commits placed last under the configurable `unscopedLabel`.
 4. **Mustache** renders the `Changelog` object against a template (bundled default or user-supplied) and the result is written to disk.
 
 ## Project layout
@@ -99,10 +99,16 @@ The Husky pre-commit hook runs `npm run lint`.
 
 Tests live alongside their source in `__tests__/` directories. The test suite covers:
 
+### Unit tests
+
 - **`util.ts`** — pure function tests for `organizeCommitsByCategory`, `organizeCommitsByScope`, `organizeCommitsByTags`, `organizeCommitsByTagsScopesAndCategories`, and `buildChangelogMetadata`.
-- **`scope.ts`** — dedicated tests for scope grouping, `ignoreScope` flag, `unscopedLabel`, scope sorting, and scoped changelog metadata building.
+- **`scope.ts`** — dedicated tests for scope grouping, `ignoreScope` flag, `unscopedLabel`, `allowedScopes` filtering and label mapping, scope sorting, and scoped changelog metadata building.
 - **`git-parser.ts`** — tests with `exec` mocked via `vi.mock('node:util')`, verifying commit parsing (including scope extraction), tag extraction, PR-number stripping, and error handling.
 - **`configService.ts`** — tests with `fs` mocked, verifying default config, custom config merging, path resolution, and `allowedCategories` sanitisation.
+
+### Integration test
+
+- **`integration.ts`** (`src/__tests__/`) — end-to-end test that creates a temporary git repository with known commits and tags, runs the full pipeline (git log parsing → organising → metadata building → Mustache rendering), and asserts on the generated markdown output. Covers release structure, scope headings, `allowedScopes` filtering/labelling, `ignoreScope` flattening, `stripPRNumbers`, and `unscopedLabel`. The temp repo is created in `beforeAll` and cleaned up in `afterAll`.
 
 ## Known limitations
 

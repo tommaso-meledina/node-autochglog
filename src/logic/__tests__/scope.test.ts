@@ -30,6 +30,7 @@ const makeConfig = (
     { key: 'fix', label: 'Fixes' },
     { key: 'refactor', label: 'Refactoring' }
   ],
+  allowedScopes: [],
   stripPRNumbers: false,
   ignoreScope: false,
   unscopedLabel: 'not scoped',
@@ -401,5 +402,242 @@ describe('buildChangelogMetadata with scope', () => {
     const release = result.releases.find((r) => r.name === '1.0.0')!;
     expect(release.scopes).toEqual([]);
     expect(release.categories).toHaveLength(2);
+  });
+
+  it('uses allowedScopes labels to resolve scope display names', () => {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
+      '1.0.0': {
+        api: {
+          feat: [
+            makeCommit({
+              category: 'feat',
+              message: 'add endpoint',
+              scope: 'api'
+            })
+          ]
+        },
+        arch: {
+          refactor: [
+            makeCommit({
+              category: 'refactor',
+              message: 'restructure layers',
+              scope: 'arch'
+            })
+          ]
+        }
+      }
+    };
+    const config = makeConfig({
+      allowedScopes: [
+        { key: 'api', label: 'API' },
+        { key: 'arch', label: 'Architecture' }
+      ]
+    });
+    const result = buildChangelogMetadata(data, tags, config);
+    const release = result.releases.find((r) => r.name === '1.0.0')!;
+    expect(release.scopes.map((s) => s.name)).toEqual(['API', 'Architecture']);
+  });
+
+  it('falls back to scope key when allowedScopes entry has no label', () => {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
+      '1.0.0': {
+        api: {
+          feat: [
+            makeCommit({
+              category: 'feat',
+              message: 'add endpoint',
+              scope: 'api'
+            })
+          ]
+        }
+      }
+    };
+    const config = makeConfig({
+      allowedScopes: [{ key: 'api' }]
+    });
+    const result = buildChangelogMetadata(data, tags, config);
+    const release = result.releases.find((r) => r.name === '1.0.0')!;
+    expect(release.scopes[0].name).toBe('api');
+  });
+
+  it('does not apply allowedScopes to the unscoped group', () => {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
+      '1.0.0': {
+        api: {
+          feat: [
+            makeCommit({
+              category: 'feat',
+              message: 'add endpoint',
+              scope: 'api'
+            })
+          ]
+        },
+        '': {
+          fix: [makeCommit({ category: 'fix', message: 'fix typo' })]
+        }
+      }
+    };
+    const config = makeConfig({
+      allowedScopes: [{ key: 'api', label: 'API' }],
+      unscopedLabel: 'General'
+    });
+    const result = buildChangelogMetadata(data, tags, config);
+    const release = result.releases.find((r) => r.name === '1.0.0')!;
+    const scopeNames = release.scopes.map((s) => s.name);
+    expect(scopeNames).toContain('API');
+    expect(scopeNames).toContain('General');
+  });
+
+  it('sorts labelled scopes alphabetically by resolved name', () => {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
+      '1.0.0': {
+        arch: {
+          refactor: [
+            makeCommit({
+              category: 'refactor',
+              message: 'restructure',
+              scope: 'arch'
+            })
+          ]
+        },
+        api: {
+          feat: [
+            makeCommit({
+              category: 'feat',
+              message: 'add endpoint',
+              scope: 'api'
+            })
+          ]
+        },
+        '': {
+          fix: [makeCommit({ category: 'fix', message: 'fix typo' })]
+        }
+      }
+    };
+    const config = makeConfig({
+      allowedScopes: [
+        { key: 'arch', label: 'Architecture' },
+        { key: 'api', label: 'API' }
+      ]
+    });
+    const result = buildChangelogMetadata(data, tags, config);
+    const release = result.releases.find((r) => r.name === '1.0.0')!;
+    expect(release.scopes.map((s) => s.name)).toEqual([
+      'API',
+      'Architecture',
+      'not scoped'
+    ]);
+  });
+
+  it('shows all scopes when allowedScopes is empty', () => {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
+      '1.0.0': {
+        api: {
+          feat: [
+            makeCommit({
+              category: 'feat',
+              message: 'add endpoint',
+              scope: 'api'
+            })
+          ]
+        },
+        ui: {
+          fix: [
+            makeCommit({
+              category: 'fix',
+              message: 'fix button',
+              scope: 'ui'
+            })
+          ]
+        }
+      }
+    };
+    const config = makeConfig({ allowedScopes: [] });
+    const result = buildChangelogMetadata(data, tags, config);
+    const release = result.releases.find((r) => r.name === '1.0.0')!;
+    expect(release.scopes).toHaveLength(2);
+    expect(release.scopes.map((s) => s.name)).toEqual(['api', 'ui']);
+  });
+
+  it('filters out scopes not listed in allowedScopes', () => {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
+      '1.0.0': {
+        api: {
+          feat: [
+            makeCommit({
+              category: 'feat',
+              message: 'add endpoint',
+              scope: 'api'
+            })
+          ]
+        },
+        ui: {
+          fix: [
+            makeCommit({
+              category: 'fix',
+              message: 'fix button',
+              scope: 'ui'
+            })
+          ]
+        },
+        ci: {
+          feat: [
+            makeCommit({
+              category: 'feat',
+              message: 'add pipeline',
+              scope: 'ci'
+            })
+          ]
+        }
+      }
+    };
+    const config = makeConfig({
+      allowedScopes: [
+        { key: 'api', label: 'API' },
+        { key: 'ui', label: 'User Interface' }
+      ]
+    });
+    const result = buildChangelogMetadata(data, tags, config);
+    const release = result.releases.find((r) => r.name === '1.0.0')!;
+    expect(release.scopes).toHaveLength(2);
+    expect(release.scopes.map((s) => s.name)).toEqual([
+      'API',
+      'User Interface'
+    ]);
+  });
+
+  it('preserves unscoped group when allowedScopes filters other scopes', () => {
+    const data: Record<string, Record<string, Record<string, Commit[]>>> = {
+      '1.0.0': {
+        api: {
+          feat: [
+            makeCommit({
+              category: 'feat',
+              message: 'add endpoint',
+              scope: 'api'
+            })
+          ]
+        },
+        ui: {
+          fix: [
+            makeCommit({
+              category: 'fix',
+              message: 'fix button',
+              scope: 'ui'
+            })
+          ]
+        },
+        '': {
+          fix: [makeCommit({ category: 'fix', message: 'fix typo' })]
+        }
+      }
+    };
+    const config = makeConfig({
+      allowedScopes: [{ key: 'api', label: 'API' }]
+    });
+    const result = buildChangelogMetadata(data, tags, config);
+    const release = result.releases.find((r) => r.name === '1.0.0')!;
+    expect(release.scopes).toHaveLength(2);
+    expect(release.scopes.map((s) => s.name)).toEqual(['API', 'not scoped']);
   });
 });

@@ -129,4 +129,26 @@ describe('getRuntimeConfig', () => {
     expect(config.ignoreScope).toBe(true);
     expect(config.unscopedLabel).toBe('misc');
   });
+
+  it('defaults allowedScopes to an empty array', () => {
+    vi.spyOn(fs, 'readFileSync').mockImplementation(() => {
+      throw new Error('ENOENT');
+    });
+
+    const config = getRuntimeConfig();
+
+    expect(config.allowedScopes).toEqual([]);
+  });
+
+  it('merges custom allowedScopes', () => {
+    const customConfig = {
+      allowedScopes: [{ key: 'api', label: 'API' }]
+    };
+
+    vi.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(customConfig));
+
+    const config = getRuntimeConfig();
+
+    expect(config.allowedScopes).toEqual([{ key: 'api', label: 'API' }]);
+  });
 });

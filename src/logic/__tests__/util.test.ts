@@ -32,6 +32,7 @@ const makeConfig = (
     { key: 'fix', label: 'Fixes' },
     { key: 'refactor', label: 'Refactoring' }
   ],
+  allowedScopes: [],
   stripPRNumbers: false,
   ignoreScope: false,
   unscopedLabel: 'not scoped',
