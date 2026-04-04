@@ -187,4 +187,40 @@ describe('getGitLogInfo', () => {
     expect(result.commits[0].scope).toBe('auth');
     expect(result.commits[0].message).toBe('handle edge case');
   });
+
+  it('parses breaking change commits without scope', async () => {
+    setupExecMock({
+      ids: 'abc1234',
+      dates: '2025-01-15 10:00:00 +0000',
+      messages: 'feat!: remove legacy API',
+      tagDates: '',
+      tagDecorations: ''
+    });
+
+    const config = makeConfig();
+    const result = await getGitLogInfo(config);
+
+    expect(result.commits).toHaveLength(1);
+    expect(result.commits[0].category).toBe('feat');
+    expect(result.commits[0].scope).toBeUndefined();
+    expect(result.commits[0].message).toBe('remove legacy API');
+  });
+
+  it('parses breaking change commits with scope', async () => {
+    setupExecMock({
+      ids: 'abc1234',
+      dates: '2025-01-15 10:00:00 +0000',
+      messages: 'feat(api)!: redesign endpoints',
+      tagDates: '',
+      tagDecorations: ''
+    });
+
+    const config = makeConfig();
+    const result = await getGitLogInfo(config);
+
+    expect(result.commits).toHaveLength(1);
+    expect(result.commits[0].category).toBe('feat');
+    expect(result.commits[0].scope).toBe('api');
+    expect(result.commits[0].message).toBe('redesign endpoints');
+  });
 });

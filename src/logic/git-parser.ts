@@ -105,7 +105,9 @@ export const getGitLogInfo = async (config: NodeAutoChglogConfig) => {
   };
 
   Array.from({ length: commitIds.length }).forEach((_, i) => {
-    const match = commitMessages[i]?.match(/^([^(:]+)(?:\(([^)]*)\))?:\s*(.*)/);
+    const match = commitMessages[i]?.match(
+      /^([^(:!]+)(?:\(([^)]*)\))?!?:\s*(.*)/
+    );
     if (match) {
       response.commits.push({
         id: commitIds[i],

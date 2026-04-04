@@ -73,4 +73,14 @@ describe('commit message parsing with colons in description', () => {
     expect(result.commits[0].scope).toBe('auth');
     expect(result.commits[0].message).toBe('handle edge case');
   });
+
+  it('strips breaking change indicator from scoped commits', async () => {
+    setupExecMock('feat(api)!: redesign endpoints');
+    const result = await getGitLogInfo(makeConfig());
+
+    expect(result.commits).toHaveLength(1);
+    expect(result.commits[0].category).toBe('feat');
+    expect(result.commits[0].scope).toBe('api');
+    expect(result.commits[0].message).toBe('redesign endpoints');
+  });
 });

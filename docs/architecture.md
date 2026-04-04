@@ -71,7 +71,7 @@ The output heading hierarchy is: **version > scope > type**. When scope headings
 
 ## Commit parsing
 
-Commit messages are matched against `/^([^(:]+)(?:\(([^)]*)\))?:\s*(.*)/`:
+Commit messages are matched against `/^([^(:!]+)(?:\(([^)]*)\))?!?:\s*(.*)/`:
 
 - **Group 1** (type prefix before parentheses or colon) becomes the `category`.
 - **Group 2** (text inside parentheses, optional) becomes the `scope`.
