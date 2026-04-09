@@ -30,6 +30,7 @@ const makeConfig = (
   stripPRNumbers: false,
   ignoreScope: false,
   unscopedLabel: 'not scoped',
+  excludeCommitMessagePattern: '',
   ...overrides
 });
 
@@ -209,5 +210,16 @@ describe('integration: full pipeline against a real git repository', () => {
 
     expect(output).toContain('### General');
     expect(output).not.toContain('### not scoped');
+  });
+
+  it('omits commits matching excludeCommitMessagePattern', async () => {
+    const output = await renderChangelog(
+      makeConfig({
+        excludeCommitMessagePattern: 'add logging'
+      })
+    );
+
+    expect(output).not.toContain('* add logging');
+    expect(output).toContain('* add users endpoint');
   });
 });

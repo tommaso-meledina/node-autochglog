@@ -36,6 +36,7 @@ const makeConfig = (
   stripPRNumbers: false,
   ignoreScope: false,
   unscopedLabel: 'not scoped',
+  excludeCommitMessagePattern: '',
   ...overrides
 });
 

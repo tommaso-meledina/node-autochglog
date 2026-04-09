@@ -32,6 +32,7 @@ const makeConfig = (
   stripPRNumbers: false,
   ignoreScope: false,
   unscopedLabel: 'not scoped',
+  excludeCommitMessagePattern: '',
   ...overrides
 });
 
@@ -223,5 +224,59 @@ describe('getGitLogInfo', () => {
     expect(result.commits[0].category).toBe('feat');
     expect(result.commits[0].scope).toBe('api');
     expect(result.commits[0].message).toBe('redesign endpoints');
+  });
+
+  it('omits commits whose subject line matches excludeCommitMessagePattern', async () => {
+    setupExecMock({
+      ids: 'a1\na2\na3',
+      dates:
+        '2025-01-15 10:00:00 +0000\n2025-01-16 10:00:00 +0000\n2025-01-17 10:00:00 +0000',
+      messages: 'feat: keep me\nfeat: drop me\nfix: also keep',
+      tagDates: '',
+      tagDecorations: ''
+    });
+
+    const config = makeConfig({
+      excludeCommitMessagePattern: 'drop me'
+    });
+    const result = await getGitLogInfo(config);
+
+    expect(result.commits).toHaveLength(2);
+    expect(result.commits.map((c) => c.message)).toEqual([
+      'keep me',
+      'also keep'
+    ]);
+  });
+
+  it('applies excludeCommitMessagePattern after stripPRNumbers', async () => {
+    setupExecMock({
+      ids: 'a1\na2',
+      dates: '2025-01-15 10:00:00 +0000\n2025-01-16 10:00:00 +0000',
+      messages: 'feat: tagged (#7)\nfeat: other',
+      tagDates: '',
+      tagDecorations: ''
+    });
+
+    const whenStrippedFirst = makeConfig({
+      stripPRNumbers: true,
+      excludeCommitMessagePattern: '\\(#7\\)'
+    });
+    const strippedResult = await getGitLogInfo(whenStrippedFirst);
+    expect(strippedResult.commits).toHaveLength(2);
+
+    setupExecMock({
+      ids: 'a1\na2',
+      dates: '2025-01-15 10:00:00 +0000\n2025-01-16 10:00:00 +0000',
+      messages: 'feat: tagged (#7)\nfeat: other',
+      tagDates: '',
+      tagDecorations: ''
+    });
+    const whenNotStripped = makeConfig({
+      stripPRNumbers: false,
+      excludeCommitMessagePattern: '\\(#7\\)'
+    });
+    const rawResult = await getGitLogInfo(whenNotStripped);
+    expect(rawResult.commits).toHaveLength(1);
+    expect(rawResult.commits[0].message).toBe('other');
   });
 });

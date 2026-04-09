@@ -54,6 +54,7 @@ export interface NodeAutoChglogConfig {
   stripPRNumbers: boolean;
   ignoreScope: boolean;
   unscopedLabel: string;
+  excludeCommitMessagePattern: string;
 }
 ```
 
@@ -121,6 +122,11 @@ export interface NodeAutoChglogConfig {
     <td><code>unscopedLabel</code></td>
     <td>Heading used for commits that have no scope, when scope headings are active</td>
     <td><code>not scoped</code></td>
+  </tr>
+  <tr>
+    <td><code>excludeCommitMessagePattern</code></td>
+    <td>Optional RegExp (same semantics as <code>tagFilter</code>): when non-empty, conventional commits whose <strong>full one-line subject</strong> matches are omitted. Matching runs after <code>stripPRNumbers</code>. Empty string disables the filter.</td>
+    <td><code>""</code></td>
   </tr>
 </table>
 

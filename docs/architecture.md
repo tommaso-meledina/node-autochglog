@@ -8,7 +8,7 @@
 git log  ──►  getGitLogInfo()  ──►  organizeCommitsByTagsScopesAndCategories()  ──►  buildChangelogMetadata()  ──►  Mustache.render()  ──►  file
 ```
 
-1. **`getGitLogInfo`** (`logic/git-parser.ts`) invokes `git log` to obtain commit IDs, dates, messages, and tag decorations. It filters commits matching the `type(scope): description` Conventional Commits pattern (scope is optional) and extracts semver-like tags via the `extractTagName` helper.
+1. **`getGitLogInfo`** (`logic/git-parser.ts`) invokes `git log` to obtain commit IDs, dates, messages, and tag decorations. It applies `stripPRNumbers` to each subject line, then drops lines matching `excludeCommitMessagePattern` when that string is non-empty (JavaScript `RegExp` syntax, same idea as `tagFilter` but excluding matches). Remaining lines are parsed with the Conventional Commits pattern (`type(scope): description`, scope optional). Semver-like tags are extracted via `extractTagName`.
 2. **`organizeCommitsByTagsScopesAndCategories`** (`logic/util.ts`) groups commits under their nearest subsequent tag (release), then sub-groups by scope, then by category (the Conventional Commit type prefix). When `ignoreScope` is `true`, all scope information is cleared before grouping. Commits newer than all tags are assigned to the configurable `initialTag`.
 3. **`buildChangelogMetadata`** (`logic/util.ts`) transforms the nested map into a `Changelog` object for Mustache rendering, filtering out categories absent from `allowedCategories` and scopes absent from `allowedScopes` (when the latter is non-empty), resolving display labels for both categories and scopes, and sorting releases by date descending. When at least one commit across the entire changelog has a scope, `scopesEnabled` is set to `true` and scope headings are included; otherwise scope headings are omitted. Scope display names are resolved via `allowedScopes` labels (falling back to the raw scope key when no label is provided). Scopes are sorted alphabetically ascending by resolved name, with unscoped commits placed last under the configurable `unscopedLabel`.
 4. **Mustache** renders the `Changelog` object against a template (bundled default or user-supplied) and the result is written to disk.
@@ -77,7 +77,7 @@ Commit messages are matched against `/^([^(:!]+)(?:\(([^)]*)\))?!?:\s*(.*)/`:
 - **Group 2** (text inside parentheses, optional) becomes the `scope`.
 - **Group 3** (everything after the colon and optional whitespace) becomes the `message`.
 
-Non-matching messages are silently excluded from the changelog.
+Non-matching messages are silently excluded from the changelog. Commits whose full one-line subject (after `stripPRNumbers`) matches `excludeCommitMessagePattern` are omitted before parsing; an empty pattern disables this filter.
 
 Tag decorations are parsed by `extractTagName`, which extracts the first `tag: <name>` entry from the parenthesised decoration string.
 
@@ -108,7 +108,7 @@ Tests live alongside their source in `__tests__/` directories. The test suite co
 
 ### Integration test
 
-- **`integration.ts`** (`src/__tests__/`) — end-to-end test that creates a temporary git repository with known commits and tags, runs the full pipeline (git log parsing → organising → metadata building → Mustache rendering), and asserts on the generated markdown output. Covers release structure, scope headings, `allowedScopes` filtering/labelling, `ignoreScope` flattening, `stripPRNumbers`, and `unscopedLabel`. The temp repo is created in `beforeAll` and cleaned up in `afterAll`.
+- **`integration.ts`** (`src/__tests__/`) — end-to-end test that creates a temporary git repository with known commits and tags, runs the full pipeline (git log parsing → organising → metadata building → Mustache rendering), and asserts on the generated markdown output. Covers release structure, scope headings, `allowedScopes` filtering/labelling, `ignoreScope` flattening, `stripPRNumbers`, `unscopedLabel`, and `excludeCommitMessagePattern`. The temp repo is created in `beforeAll` and cleaned up in `afterAll`.
 
 ## Known limitations
 

@@ -9,6 +9,7 @@ export interface NodeAutoChglogConfig {
   stripPRNumbers: boolean;
   ignoreScope: boolean;
   unscopedLabel: string;
+  excludeCommitMessagePattern: string;
 }
 
 export interface CustomNodeAutoChglogConfig {
@@ -22,6 +23,7 @@ export interface CustomNodeAutoChglogConfig {
   stripPRNumbers?: boolean;
   ignoreScope?: boolean;
   unscopedLabel?: string;
+  excludeCommitMessagePattern?: string;
 }
 
 export const defaultConfig: NodeAutoChglogConfig = {
@@ -52,5 +54,6 @@ export const defaultConfig: NodeAutoChglogConfig = {
   allowedScopes: [],
   stripPRNumbers: false,
   ignoreScope: false,
-  unscopedLabel: 'not scoped'
+  unscopedLabel: 'not scoped',
+  excludeCommitMessagePattern: ''
 };

@@ -28,6 +28,7 @@ describe('getRuntimeConfig', () => {
     expect(config.outputFilepath).toContain('CHANGELOG.md');
     expect(config.ignoreScope).toBe(false);
     expect(config.unscopedLabel).toBe('not scoped');
+    expect(config.excludeCommitMessagePattern).toBe('');
   });
 
   it('merges custom config over defaults', () => {

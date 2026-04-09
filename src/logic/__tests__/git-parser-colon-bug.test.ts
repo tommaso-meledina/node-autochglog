@@ -29,7 +29,8 @@ const makeConfig = (): NodeAutoChglogConfig => ({
   allowedScopes: [],
   stripPRNumbers: false,
   ignoreScope: false,
-  unscopedLabel: 'not scoped'
+  unscopedLabel: 'not scoped',
+  excludeCommitMessagePattern: ''
 });
 
 const setupExecMock = (messages: string) => {

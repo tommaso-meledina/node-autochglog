@@ -104,10 +104,17 @@ export const getGitLogInfo = async (config: NodeAutoChglogConfig) => {
     tags
   };
 
+  const messageExclusionRegExp =
+    config.excludeCommitMessagePattern.trim() === ''
+      ? null
+      : new RegExp(config.excludeCommitMessagePattern);
+
   Array.from({ length: commitIds.length }).forEach((_, i) => {
-    const match = commitMessages[i]?.match(
-      /^([^(:!]+)(?:\(([^)]*)\))?!?:\s*(.*)/
-    );
+    const subjectLine = commitMessages[i] ?? '';
+    if (messageExclusionRegExp?.test(subjectLine)) {
+      return;
+    }
+    const match = subjectLine.match(/^([^(:!]+)(?:\(([^)]*)\))?!?:\s*(.*)/);
     if (match) {
       response.commits.push({
         id: commitIds[i],
